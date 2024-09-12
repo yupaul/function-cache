@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "farmhash": "^3.3.0",
+    "flatted": "^3.3.1",
+    "moment-timezone": "^0.5.45",
+    "msgpackr": "^1.11.0",
+    "rfdc": "^1.4.1"
+  }
+}
