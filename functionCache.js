@@ -7,8 +7,18 @@ class FunctionCache {
         this.timeouts = {}
         this.data = {}
         this.setOptions(null, true)
+        if(options) this.setOptions(options)
     }
 
+    /**
+     * Set FunctionCache options.
+     * @param {Object} options - object with options to set
+     * @param {boolean} [init=false] - if true, will set intial values for options
+     * @property {function} set_callback - callback to call on get (set), args are: eventName, [key1, key2, result, ttl, noFreeze]
+     * @property {function} delete_callback - callback to call on delete, args are: eventName, [key1, key2]
+     * @property {string} set_event_name - name of event to emit on set
+     * @property {string} delete_event_name - name of event to emit on delete
+     */
     setOptions(options, init) {
         if (!options) options = {
             set_callback: null,
@@ -27,6 +37,15 @@ class FunctionCache {
         if (typeof value === required_type) this.name = value
     }
     
+    /**
+     * Get the result of a function from the cache. If the result does not exist in the cache, call the function and cache the result.
+     * @param {function} func - the function to call if the result is not in the cache
+     * @param {array} args - the arguments to pass to the function
+     * @param {number} [ttl] - the number of milliseconds to cache the result for
+     * @param {boolean} [no_freeze] - if true, do not freeze the value in the cache
+     * @param {function} [callback] - the callback to call when the value is set in the cache
+     * @returns {Promise<any>} the cached result, or the result of calling the function
+     */
     async get(func, args, ttl, no_freeze, callback) {
         this.setOptions('set_callback', callback)
         if(!args || !Array.isArray(args)) args = []
@@ -43,6 +62,14 @@ class FunctionCache {
         return promisify(result)
     }
 
+    /**
+     * Set a value in the cache.
+     * @param {string} key1 - the first part of the cache key
+     * @param {string} key2 - the second part of the cache key
+     * @param {any} result - the value to cache
+     * @param {number} [ttl] - the number of milliseconds to cache the result for
+     * @param {boolean} [no_freeze] - if true, do not freeze the value in the cache
+     */
     setWithKeys(key1, key2, result, ttl, no_freeze) {
         if(!this.data[key1]) this.data[key1] = {}
         this.data[key1][key2] = {value: result}
@@ -54,27 +81,39 @@ class FunctionCache {
         }        
     }
 
+    /**
+     * Delete a value from the cache.
+     * @param {string|number|function} k - the first part of the cache key
+     * @param {array} [args] - the arguments to pass to the function
+     * @param {boolean} [dont_clear_timeout] - if true, do not clear the timeout
+     * @param {function} [callback] - the callback to call when the value is deleted from the cache
+     */
     delete(k, args, dont_clear_timeout, callback) {
         this.setOptions('delete_callback', callback)
         const _type = typeof k
         const key1 = _type !== 'string' && _type !== 'number' ? (_type === 'function' ? farmhash.hash32(k.toString()) : farmhash.hash32(stringifyFlatted(k))) : k
         
-        const k2 = args ? farmhash.hash32(stringifyFlatted(args)) : null
+        const key2 = args ? farmhash.hash32(stringifyFlatted(args)) : null
         if(this.data[key1] !== undefined) {
-            if(k2) {                
-                delete this.data[key1][k2]		
+            if(key2) {                
+                delete this.data[key1][key2]		
                 return
             }
             delete this.data[key1]
         }
-        if(this.delete_callback && (k2 || !dont_clear_timeout)) this.delete_callback(this.delete_event_name, [key1, k2])        
+        if(this.delete_callback && (key2 || !dont_clear_timeout)) this.delete_callback(this.delete_event_name, [key1, key2])        
         this.clearTimeout(key1, dont_clear_timeout)
     }
 
-    deleteWithKeys(key1, k2) {
+    /**
+     * Delete a value from the cache with the given keys.
+     * @param {string} key1 - the first part of the cache key
+     * @param {string} [key2] - the second part of the cache key
+     */
+    deleteWithKeys(key1, key2) {
         if(this.data[key1] !== undefined) {
-            if(k2) {
-                delete this.data[key1][k2]
+            if(key2) {
+                delete this.data[key1][key2]
                 return
             }
             delete this.data[key1]
