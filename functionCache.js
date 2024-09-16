@@ -1,5 +1,5 @@
 const farmhash = require('farmhash')
-const { stringifyFlatted, promisify } = require('./helper')
+const { stringifyFlatted } = require('./helper')
 
 class FunctionCache {
 
@@ -52,14 +52,14 @@ class FunctionCache {
         const key1 = farmhash.hash32(func.toString())
         const key2 = args.length ? farmhash.hash32(stringifyFlatted(args)) : 'empty'
         
-        if(this.data[key1] !== undefined && this.data[key1][key2] !== undefined) return promisify(this.data[key1][key2].value)
+        if(this.data[key1] !== undefined && this.data[key1][key2] !== undefined) return Promise.resolve(this.data[key1][key2].value)
         let result = func(...args)
         if(result instanceof Promise) result = await result
 
         if(this.set_callback) this.set_callback(this.set_event_name, [key1, key2, result, ttl || 0, Boolean(no_freeze)])         
 
         this.setWithKeys(key1, key2, result, ttl, no_freeze)
-        return promisify(result)
+        return Promise.resolve(result)
     }
 
     /**
